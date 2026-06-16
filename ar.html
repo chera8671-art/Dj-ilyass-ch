@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@ar-js-org/ar.js/aframe/build/aframe-ar.js"></script>
+</head>
+<body>
+    <a-scene embedded arjs>
+        <!-- علامة AR تظهر فوقها نموذج ثلاثي الأبعاد -->
+        <a-marker preset="hiro">
+            <a-entity gltf-model="#nukeModel" scale="0.5 0.5 0.5"></a-entity>
+        </a-marker>
+        <a-entity camera></a-entity>
+    </a-scene>
+</body>
+</html>
