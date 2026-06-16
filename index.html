@@ -5,11 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>بيتو الوليد - القنبلة النووية | Beto Nuclear Bomb</title>
     <link rel="stylesheet" href="style.css">
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
     <!-- مكتبات خارجية عملاقة -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/webtorrent@1.9.0/webtorrent.min.js"></script>
+    <!-- A-Frame + AR.js للواقع المعزز -->
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@ar-js-org/ar.js/aframe/build/aframe-ar.js"></script>
 </head>
 <body>
     <!-- خلفية ثلاثية الأبعاد نووية -->
@@ -27,6 +32,8 @@
             <button onclick="switchPanel('games')">🎮 ألعاب</button>
             <button onclick="switchPanel('files')">📁 P2P</button>
             <button onclick="switchPanel('vr')">🥽 VR</button>
+            <button onclick="switchPanel('midi')">🎹 MIDI</button>
+            <button onclick="switchPanel('storage')">💾 تخزين</button>
         </div>
         <div id="user-count">👥 1</div>
     </nav>
@@ -135,14 +142,181 @@
             <div id="torrent-progress"></div>
         </div>
 
-        <!-- لوحة الواقع الافتراضي -->
+        <!-- لوحة الواقع الافتراضي + المعزز -->
         <div id="panel-vr" class="panel">
-            <h2>🥽 Virtual Reality</h2>
+            <h2>🥽 Virtual & Augmented Reality</h2>
             <button onclick="enterVR()">دخول VR</button>
-            <canvas id="vr-canvas"></canvas>
+            <button onclick="openAR()">📱 فتح الواقع المعزز</button>
+            <div id="ar-container" style="width:100%;height:400px;display:none;"></div>
+        </div>
+
+        <!-- لوحة MIDI -->
+        <div id="panel-midi" class="panel">
+            <h2>🎹 أجهزة MIDI</h2>
+            <button onclick="initMIDI()">🔌 اتصال MIDI</button>
+            <p id="midi-status">غير متصل</p>
+            <p>استخدم أزرار جهاز MIDI للتحكم بالـ DJ</p>
+        </div>
+
+        <!-- لوحة التخزين المحلي (IndexedDB) -->
+        <div id="panel-storage" class="panel">
+            <h2>💾 تخزين المسارات</h2>
+            <button onclick="saveCurrentTrack()">💿 حفظ المسار الحالي</button>
+            <button onclick="loadSavedTracks()">📂 تحميل المسارات المحفوظة</button>
+            <div id="saved-tracks-list"></div>
         </div>
     </div>
 
+    <!-- سكريبت التطبيق الأساسي -->
     <script src="app.js"></script>
+
+    <!-- ========== الإضافات الجديدة مدمجة هنا ========== -->
+    <script>
+        // ---------- PWA: تسجيل Service Worker ----------
+        if ('serviceWorker' in navigator) {
+            // إنشاء sw.js ديناميكيًا باستخدام Blob (لا حاجة لملف منفصل)
+            const swCode = `
+                const CACHE_NAME = 'beto-nuclear-v1';
+                const ASSETS = [
+                    '/',
+                    '/index.html',
+                    '/style.css',
+                    '/app.js',
+                    'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
+                    'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js',
+                    'https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js',
+                    'https://cdn.jsdelivr.net/npm/webtorrent@1.9.0/webtorrent.min.js'
+                ];
+
+                self.addEventListener('install', e => {
+                    e.waitUntil(
+                        caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
+                    );
+                });
+
+                self.addEventListener('fetch', e => {
+                    e.respondWith(
+                        caches.match(e.request).then(res => res || fetch(e.request))
+                    );
+                });
+            `;
+            const blob = new Blob([swCode], { type: 'application/javascript' });
+            const swUrl = URL.createObjectURL(blob);
+            navigator.serviceWorker.register(swUrl);
+        }
+
+        // ---------- MIDI ----------
+        async function initMIDI() {
+            if (!navigator.requestMIDIAccess) {
+                alert('متصفحك لا يدعم Web MIDI');
+                return;
+            }
+            try {
+                const midi = await navigator.requestMIDIAccess();
+                document.getElementById('midi-status').textContent = '✅ متصل';
+                midi.inputs.forEach(input => {
+                    input.onmidimessage = (msg) => {
+                        const [command, note, velocity] = msg.data;
+                        if (command === 144 && velocity > 0) { // Note On
+                            switch(note) {
+                                case 36: togglePlay('a'); break;
+                                case 37: togglePlay('b'); break;
+                                case 38: crossfade(0); document.getElementById('crossfader').value = 0; break;
+                                case 39: crossfade(1); document.getElementById('crossfader').value = 100; break;
+                                case 40: toggleAutoDJ(); break;
+                                case 41: syncDecks(); break;
+                            }
+                        }
+                    };
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // ---------- IndexedDB لحفظ المسارات ----------
+        const dbPromise = indexedDB.open('BetoNukeDB', 1);
+        dbPromise.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            db.createObjectStore('tracks', { keyPath: 'id', autoIncrement: true });
+        };
+
+        function saveCurrentTrack() {
+            // حفظ الملف المختار حاليًا (نفترض أنه آخر ملف تم رفعه)
+            const fileInput = document.querySelector('input[type="file"]');
+            if (!fileInput.files[0]) return alert('ارفع ملفاً أولاً');
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            reader.onload = () => {
+                const open = indexedDB.open('BetoNukeDB');
+                open.onsuccess = (e) => {
+                    const db = e.target.result;
+                    const tx = db.transaction('tracks', 'readwrite');
+                    tx.objectStore('tracks').add({ blob: reader.result, name: file.name, date: Date.now() });
+                    alert('تم الحفظ');
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function loadSavedTracks() {
+            const open = indexedDB.open('BetoNukeDB');
+            open.onsuccess = (e) => {
+                const db = e.target.result;
+                const tx = db.transaction('tracks', 'readonly');
+                const req = tx.objectStore('tracks').getAll();
+                req.onsuccess = () => {
+                    const tracks = req.result;
+                    const listDiv = document.getElementById('saved-tracks-list');
+                    listDiv.innerHTML = '';
+                    tracks.forEach(t => {
+                        const btn = document.createElement('button');
+                        btn.textContent = t.name;
+                        btn.onclick = () => {
+                            // تحويل base64 إلى blob لتحميله
+                            const arr = t.blob.split(',');
+                            const mime = arr[0].match(/:(.*?);/)[1];
+                            const bstr = atob(arr[1]);
+                            let n = bstr.length;
+                            const u8arr = new Uint8Array(n);
+                            while(n--){ u8arr[n] = bstr.charCodeAt(n); }
+                            const blob = new Blob([u8arr], {type: mime});
+                            const url = URL.createObjectURL(blob);
+                            // تشغيله في Deck A
+                            decks.a.audio.src = url;
+                            detectBPM('a');
+                        };
+                        listDiv.appendChild(btn);
+                    });
+                };
+            };
+        }
+
+        // ---------- AR (الواقع المعزز) ----------
+        function openAR() {
+            const container = document.getElementById('ar-container');
+            container.style.display = 'block';
+            container.innerHTML = `
+                <a-scene embedded arjs>
+                    <a-marker preset="hiro">
+                        <a-entity geometry="primitive: box" material="color: red"></a-entity>
+                    </a-marker>
+                    <a-entity camera></a-entity>
+                </a-scene>
+            `;
+        }
+
+        // ---------- VR ----------
+        function enterVR() {
+            const container = document.getElementById('ar-container');
+            container.style.display = 'block';
+            container.innerHTML = `
+                <a-scene>
+                    <a-sphere position="0 1.25 -5" radius="1.25" color="#EF2D5E"></a-sphere>
+                    <a-sky color="#222"></a-sky>
+                </a-scene>
+            `;
+        }
+    </script>
 </body>
 </html>
