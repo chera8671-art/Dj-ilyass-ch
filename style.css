@@ -1,0 +1,131 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
+
+:root {
+    --neon-green: #39ff14;
+    --toxic-yellow: #ccff00;
+    --nuclear-red: #ff3131;
+    --bg-nuke: #0b0b0f;
+    --glass-bg: rgba(15, 20, 35, 0.75);
+    --glass-border: rgba(57, 255, 20, 0.4);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'Cairo', sans-serif;
+    background: var(--bg-nuke);
+    color: white;
+    overflow-x: hidden;
+    perspective: 800px;
+}
+
+#bg-nuclear {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    z-index: -1;
+}
+
+#nuclear-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(20px);
+    padding: 10px 20px;
+    border-bottom: 2px solid var(--neon-green);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.logo {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: var(--toxic-yellow);
+    text-shadow: 0 0 20px var(--toxic-yellow);
+    animation: nuclearPulse 2s infinite;
+}
+
+@keyframes nuclearPulse {
+    0% { opacity: 0.8; text-shadow: 0 0 20px var(--toxic-yellow); }
+    50% { opacity: 1; text-shadow: 0 0 40px var(--toxic-yellow), 0 0 60px var(--neon-green); }
+    100% { opacity: 0.8; text-shadow: 0 0 20px var(--toxic-yellow); }
+}
+
+.nav-buttons button {
+    background: transparent;
+    border: 1px solid var(--neon-green);
+    color: var(--neon-green);
+    margin: 0 5px;
+    padding: 8px 14px;
+    border-radius: 25px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: 0.3s;
+}
+.nav-buttons button:hover {
+    background: var(--neon-green);
+    color: #000;
+    box-shadow: 0 0 20px var(--neon-green);
+}
+
+.panel {
+    display: none;
+    padding: 20px;
+    margin: 20px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(15px);
+    border-radius: 20px;
+    border: 1px solid var(--glass-border);
+    min-height: 80vh;
+}
+.panel.active { display: block; }
+
+/* DJ Deck */
+.dj-decks {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 30px;
+    flex-wrap: wrap;
+}
+.deck {
+    background: rgba(20,25,40,0.8);
+    border: 2px solid var(--neon-green);
+    border-radius: 15px;
+    padding: 20px;
+    width: 320px;
+    box-shadow: 0 0 30px rgba(57,255,20,0.3);
+}
+.master {
+    background: rgba(20,25,40,0.8);
+    border: 2px solid var(--toxic-yellow);
+    border-radius: 15px;
+    padding: 20px;
+    width: 300px;
+    text-align: center;
+    box-shadow: 0 0 30px rgba(204,255,0,0.3);
+}
+.viz {
+    width: 100%;
+    height: 100px;
+    background: black;
+    border-radius: 10px;
+    margin: 10px 0;
+}
+input[type=range] { width: 100%; accent-color: var(--neon-green); }
+button { margin: 5px; }
+
+.fx label { display: block; margin-top: 10px; font-size: 12px; }
+
+/* عناصر أخرى */
+#chat-box {
+    height: 200px;
+    overflow-y: auto;
+    background: #000;
+    border: 1px solid var(--neon-green);
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 10px;
+}
